@@ -230,10 +230,6 @@ impl RuntimeLevel {
     pub fn set_level_by_str(&self, level_str: &str) -> Result<(), String> {
         Level::from_str(level_str)
             .map_err(|_| format!("Invalid level {}", level_str))
-            .and_then(|level| match level {
-                Level::Trace | Level::Debug | Level::Info => Ok(level),
-                _ => Err("Only allow to change log level to <trace|debug|info>".to_owned()),
-            })
             .map(|level| self.set_level(level))
     }
 }
