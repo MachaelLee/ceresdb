@@ -267,7 +267,7 @@ impl<'a> Reader<'a> {
         let start = Instant::now();
         if let Some(cache) = &self.meta_cache {
             if let Some(meta_data) = cache.get(self.path.as_ref()) {
-                info!(
+                debug!(
                     "meta_data finished loading from cache, path:{}, cost:{:?}",
                     self.path,
                     start.elapsed()
@@ -276,7 +276,7 @@ impl<'a> Reader<'a> {
             }
         }
 
-        info!("meta_data not found in cache, path:{}", self.path);
+        debug!("meta_data not found in cache, path:{}", self.path);
 
         // The metadata can't be found in the cache, and let's fetch it from the
         // storage.
@@ -509,7 +509,7 @@ impl Stream for RecordBatchProjector {
                             .map_err(|e| Box::new(e) as _)
                             .context(DecodeRecordBatch {});
 
-                        info!(
+                        debug!(
                             "projected one batch, cost:{:?}, path:{}",
                             start.elapsed(),
                             projector.path
@@ -561,7 +561,7 @@ impl Stream for RecordBatchReceiver {
     type Item = Result<RecordBatchWithKey>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        info!(
+        debug!(
             "poll_next start, prev_ts:{:?}, prev_is_pending:{}",
             self.prev_ts.elapsed(),
             self.prev_pending
@@ -584,7 +584,7 @@ impl Stream for RecordBatchReceiver {
         });
         let start = Instant::now();
         let poll_result = cur_rx.poll_recv(cx);
-        info!(
+        debug!(
             "poll_recv cost:{:?}, cur_rx_idx:{}, rx_group len:{}, is_pending:{}",
             start.elapsed(),
             cur_rx_idx,
@@ -651,9 +651,9 @@ impl<'a> ThreadedReader<'a> {
         self.runtime.spawn(async move {
             let mut start = Instant::now();
             while let Some(batch) = reader.next().await {
-                info!("read one batch, cost:{:?}", start.elapsed());
+                debug!("read one batch, cost:{:?}", start.elapsed());
                 if let Err(e) = tx.send(batch).await {
-                    info!("finish send a batch, cost:{:?}", start.elapsed());
+                    debug!("finish send a batch, cost:{:?}", start.elapsed());
                     error!("fail to send the fetched record batch result, err:{}", e);
                 }
 
