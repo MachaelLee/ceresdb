@@ -264,11 +264,19 @@ impl<'a> Reader<'a> {
     }
 
     async fn read_sst_meta(&self) -> Result<MetaData> {
+        let start = Instant::now();
         if let Some(cache) = &self.meta_cache {
             if let Some(meta_data) = cache.get(self.path.as_ref()) {
+                debug!(
+                    "meta_data finished loading from cache, path:{}, cost:{:?}",
+                    self.path,
+                    start.elapsed()
+                );
                 return Ok(meta_data);
             }
         }
+
+        debug!("meta_data not found in cache, path:{}", self.path);
 
         // The metadata can't be found in the cache, and let's fetch it from the
         // storage.
@@ -347,6 +355,7 @@ impl ParallelismOptions {
 struct ReaderMetrics {
     bytes_scanned: usize,
     sst_get_range_length_histogram: LocalHistogram,
+    sst_get_range_duration_histogram: LocalHistogram,
 }
 
 #[derive(Clone)]
@@ -366,6 +375,7 @@ impl ObjectStoreReader {
             metrics: ReaderMetrics {
                 bytes_scanned: 0,
                 sst_get_range_length_histogram: metrics::SST_GET_RANGE_HISTOGRAM.local(),
+                sst_get_range_duration_histogram: metrics::SST_GET_DURATION_HISTOGRAM.local(),
             },
         }
     }
@@ -379,6 +389,7 @@ impl Drop for ObjectStoreReader {
 
 impl AsyncFileReader for ObjectStoreReader {
     fn get_bytes(&mut self, range: Range<usize>) -> BoxFuture<'_, parquet::errors::Result<Bytes>> {
+        let _timer = self.metrics.sst_get_range_duration_histogram.start_timer();
         self.metrics.bytes_scanned += range.end - range.start;
         self.metrics
             .sst_get_range_length_histogram
@@ -399,6 +410,8 @@ impl AsyncFileReader for ObjectStoreReader {
         &mut self,
         ranges: Vec<Range<usize>>,
     ) -> BoxFuture<'_, parquet::errors::Result<Vec<Bytes>>> {
+        let _timer = self.metrics.sst_get_range_duration_histogram.start_timer();
+
         for range in &ranges {
             self.metrics.bytes_scanned += range.end - range.start;
             self.metrics
@@ -480,6 +493,7 @@ impl Stream for RecordBatchProjector {
                 {
                     Err(e) => Poll::Ready(Some(Err(e))),
                     Ok(record_batch) => {
+                        let start = Instant::now();
                         let parquet_decoder =
                             ParquetDecoder::new(projector.storage_format_opts.clone());
                         let record_batch = parquet_decoder
@@ -494,6 +508,12 @@ impl Stream for RecordBatchProjector {
                             .project_to_record_batch_with_key(record_batch)
                             .map_err(|e| Box::new(e) as _)
                             .context(DecodeRecordBatch {});
+
+                        debug!(
+                            "projected one batch, cost:{:?}, path:{}",
+                            start.elapsed(),
+                            projector.path
+                        );
 
                         Poll::Ready(Some(projected_batch))
                     }
@@ -533,12 +553,21 @@ struct RecordBatchReceiver {
     cur_rx_idx: usize,
     #[allow(dead_code)]
     drop_helper: AbortOnDropMany<()>,
+    prev_ts: Instant,
+    prev_pending: bool,
 }
 
 impl Stream for RecordBatchReceiver {
     type Item = Result<RecordBatchWithKey>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        debug!(
+            "poll_next start, prev_ts:{:?}, prev_is_pending:{}",
+            self.prev_ts.elapsed(),
+            self.prev_pending
+        );
+        self.prev_ts = Instant::now();
+
         if self.rx_group.is_empty() {
             return Poll::Ready(None);
         }
@@ -553,7 +582,16 @@ impl Stream for RecordBatchReceiver {
                 cur_rx_idx, rx_group_len
             )
         });
+        let start = Instant::now();
         let poll_result = cur_rx.poll_recv(cx);
+        debug!(
+            "poll_recv cost:{:?}, cur_rx_idx:{}, rx_group len:{}, is_pending:{}",
+            start.elapsed(),
+            cur_rx_idx,
+            rx_group_len,
+            matches!(poll_result, Poll::Pending),
+        );
+        self.prev_pending = matches!(poll_result, Poll::Pending);
 
         match poll_result {
             Poll::Ready(result) => {
@@ -611,10 +649,15 @@ impl<'a> ThreadedReader<'a> {
         tx: Sender<Result<RecordBatchWithKey>>,
     ) -> JoinHandle<()> {
         self.runtime.spawn(async move {
+            let mut start = Instant::now();
             while let Some(batch) = reader.next().await {
+                debug!("read one batch, cost:{:?}", start.elapsed());
                 if let Err(e) = tx.send(batch).await {
+                    debug!("finish send a batch, cost:{:?}", start.elapsed());
                     error!("fail to send the fetched record batch result, err:{}", e);
                 }
+
+                start = Instant::now();
             }
         })
     }
@@ -639,6 +682,8 @@ impl<'a> SstReader for ThreadedReader<'a> {
                 rx_group: Vec::new(),
                 cur_rx_idx: 0,
                 drop_helper: AbortOnDropMany(Vec::new()),
+                prev_ts: Instant::now(),
+                prev_pending: false,
             }) as _);
         }
 
@@ -664,6 +709,8 @@ impl<'a> SstReader for ThreadedReader<'a> {
             rx_group,
             cur_rx_idx: 0,
             drop_helper: AbortOnDropMany(handles),
+            prev_ts: Instant::now(),
+            prev_pending: false,
         }) as _)
     }
 }
