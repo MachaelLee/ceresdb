@@ -97,6 +97,14 @@ impl Limiter {
     fn try_limit_by_block_list(&self, plan: &Plan) -> Result<()> {
         match plan {
             Plan::Query(query) => {
+                // deny all read requests
+                if self.read_block_list.read().unwrap().contains("*") {
+                    BlockedTable {
+                        table: "*",
+                    }
+                    .fail()?;
+                }
+
                 self.read_block_list
                     .read()
                     .unwrap()
@@ -117,6 +125,14 @@ impl Limiter {
                     })?;
             }
             Plan::Insert(insert) => {
+                // deny all write requests
+                if self.write_block_list.read().unwrap().contains("*") {
+                    BlockedTable {
+                        table: insert.table.name(),
+                    }
+                    .fail()?;
+                }
+
                 if self
                     .write_block_list
                     .read()
