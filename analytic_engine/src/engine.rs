@@ -16,6 +16,7 @@ use table_engine::{
     table::{SchemaId, TableRef},
     ANALYTIC_ENGINE_TYPE,
 };
+use tokio::time::Instant;
 
 use crate::{
     instance::InstanceRef,
@@ -118,6 +119,7 @@ impl TableEngine for TableEngineImpl {
 
     async fn open_table(&self, request: OpenTableRequest) -> Result<Option<TableRef>> {
         let space_id = build_space_id(request.schema_id);
+        let instant = Instant::now();
 
         info!(
             "Table engine impl open table, space_id:{}, request:{:?}",
@@ -153,6 +155,12 @@ impl TableEngine for TableEngineImpl {
             ),
         };
 
+        info!(
+            "Table engine impl open table finish, space_id:{}, cost:{}ms, request:{:?}",
+            space_id,
+            instant.elapsed().as_millis(),
+            request
+        );
         Ok(Some(table_impl))
     }
 
