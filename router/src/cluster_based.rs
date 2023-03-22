@@ -2,8 +2,6 @@
 
 //! A router based on the [`cluster::Cluster`].
 
-use std::time::Duration;
-
 use async_trait::async_trait;
 use ceresdbproto::storage::{Route, RouteRequest};
 use cluster::ClusterRef;
@@ -24,8 +22,8 @@ impl ClusterBasedRouter {
         let cache = if cache_config.enable {
             Some(
                 Cache::builder()
-                    .time_to_live(Duration::from_secs(cache_config.ttl))
-                    .time_to_idle(Duration::from_secs(cache_config.tti))
+                    .time_to_live(cache_config.ttl.0)
+                    .time_to_idle(cache_config.tti.0)
                     .max_capacity(cache_config.capacity)
                     .build(),
             )
@@ -36,10 +34,9 @@ impl ClusterBasedRouter {
         Self { cluster, cache }
     }
 
-    /// route table from local cache, return cache routes and  tables which are
+    /// route table from local cache, return cache routes and tables which are
     /// not in cache
-    fn route_from_cache(&self, tables: Vec<String>) -> (Vec<Route>, Vec<String>) {
-        let mut routes = vec![];
+    fn route_from_cache(&self, tables: Vec<String>, routes: &mut Vec<Route>) -> Vec<String> {
         let mut miss = vec![];
 
         if let Some(cache) = &self.cache {
@@ -54,7 +51,7 @@ impl ClusterBasedRouter {
             miss = tables;
         }
 
-        (routes, miss)
+        miss
     }
 }
 
@@ -74,7 +71,8 @@ impl Router for ClusterBasedRouter {
         let req_ctx = req.context.unwrap();
 
         // Firstly route table from local cache.
-        let (mut routes, miss) = self.route_from_cache(req.tables);
+        let mut routes = Vec::with_capacity(req.tables.len());
+        let miss = self.route_from_cache(req.tables, &mut routes);
 
         if miss.is_empty() {
             return Ok(routes);
@@ -113,7 +111,7 @@ impl Router for ClusterBasedRouter {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, sync::Arc, thread::sleep};
+    use std::{collections::HashMap, sync::Arc, thread::sleep, time::Duration};
 
     use ceresdbproto::{
         meta_event::{
@@ -123,6 +121,7 @@ mod tests {
         storage::RequestContext,
     };
     use cluster::{Cluster, ClusterNodesResp};
+    use common_util::config::ReadableDuration;
     use meta_client::types::{
         NodeShard, RouteEntry, RouteTablesResponse, ShardInfo, ShardRole::Leader, TableInfo,
         TablesOfShard,
@@ -135,41 +134,41 @@ mod tests {
     #[async_trait]
     impl Cluster for MockClusterImpl {
         async fn start(&self) -> cluster::Result<()> {
-            todo!()
+            unimplemented!();
         }
 
         async fn stop(&self) -> cluster::Result<()> {
-            todo!()
+            unimplemented!();
         }
 
         async fn open_shard(&self, _req: &OpenShardRequest) -> cluster::Result<TablesOfShard> {
-            todo!()
+            unimplemented!();
         }
 
         async fn close_shard(&self, _req: &CloseShardRequest) -> cluster::Result<TablesOfShard> {
-            todo!()
+            unimplemented!();
         }
 
         async fn create_table_on_shard(
             &self,
             _req: &CreateTableOnShardRequest,
         ) -> cluster::Result<()> {
-            todo!()
+            unimplemented!();
         }
 
         async fn drop_table_on_shard(&self, _req: &DropTableOnShardRequest) -> cluster::Result<()> {
-            todo!()
+            unimplemented!();
         }
 
         async fn open_table_on_shard(&self, _req: &OpenTableOnShardRequest) -> cluster::Result<()> {
-            todo!()
+            unimplemented!();
         }
 
         async fn close_table_on_shard(
             &self,
             _req: &CloseTableOnShardRequest,
         ) -> cluster::Result<()> {
-            todo!()
+            unimplemented!();
         }
 
         async fn route_tables(
@@ -206,7 +205,7 @@ mod tests {
         }
 
         async fn fetch_nodes(&self) -> cluster::Result<ClusterNodesResp> {
-            todo!()
+            unimplemented!();
         }
     }
 
@@ -216,8 +215,8 @@ mod tests {
 
         let config = RouteCacheConfig {
             enable: true,
-            ttl: 4,
-            tti: 2,
+            ttl: ReadableDuration::from(Duration::from_secs(4)),
+            tti: ReadableDuration::from(Duration::from_secs(2)),
             capacity: 2,
         };
         let router = ClusterBasedRouter::new(Arc::new(mock_cluster), config);
@@ -237,14 +236,16 @@ mod tests {
             .await;
         assert_eq!(result.unwrap().len(), 2);
 
-        let (routes, miss) = router.route_from_cache(tables);
+        let mut routes = Vec::with_capacity(tables.len());
+        let miss = router.route_from_cache(tables, &mut routes);
         assert_eq!(routes.len(), 2);
         assert_eq!(miss.len(), 0);
         sleep(Duration::from_secs(1));
 
         // try to get table1
         let tables = vec![table1.to_string()];
-        let (routes, miss) = router.route_from_cache(tables);
+        let mut routes = Vec::with_capacity(tables.len());
+        let miss = router.route_from_cache(tables, &mut routes);
         assert_eq!(routes.len(), 1);
         assert_eq!(routes[0].table, table1.to_string());
         assert_eq!(miss.len(), 0);
@@ -252,7 +253,8 @@ mod tests {
         // sleep 1.5s, table2 will be evicted, and table1 in cache
         sleep(Duration::from_millis(1500));
         let tables = vec![table1.to_string(), table2.to_string()];
-        let (routes, miss) = router.route_from_cache(tables);
+        let mut routes = Vec::with_capacity(tables.len());
+        let miss = router.route_from_cache(tables, &mut routes);
         assert_eq!(routes.len(), 1);
         assert_eq!(routes[0].table, table1.to_string());
         assert_eq!(miss.len(), 1);
