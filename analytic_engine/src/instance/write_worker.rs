@@ -569,6 +569,8 @@ pub struct Options {
     pub space_id: SpaceId,
     pub worker_num: usize,
     pub runtime: Arc<Runtime>,
+    /// background runtime for flush
+    pub bg_runtime: Arc<Runtime>,
     /// Capacity of the command channel for each worker
     pub command_channel_capacity: usize,
 }
@@ -599,7 +601,7 @@ impl WriteGroup {
                 tx,
                 is_flushing: AtomicBool::new(false),
                 background_tx,
-                runtime: opts.runtime.clone(),
+                runtime: opts.bg_runtime.clone(),
                 num_background_jobs: AtomicI64::new(0),
                 background_notify: Notify::new(),
             });

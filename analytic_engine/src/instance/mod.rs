@@ -203,6 +203,7 @@ impl Instance {
             space_id,
             worker_num: self.write_group_worker_num,
             runtime: self.write_runtime().clone(),
+            bg_runtime: self.bg_runtime().clone(),
             command_channel_capacity: self.write_group_command_channel_cap,
         }
     }
@@ -223,6 +224,11 @@ impl Instance {
     #[inline]
     fn write_runtime(&self) -> &Arc<Runtime> {
         &self.runtimes.write_runtime
+    }
+
+    #[inline]
+    fn bg_runtime(&self) -> &Arc<Runtime> {
+        &self.runtimes.bg_runtime
     }
 }
 
