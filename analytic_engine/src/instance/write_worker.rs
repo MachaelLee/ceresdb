@@ -824,10 +824,23 @@ impl WriteWorker {
             replay_batch_size,
         } = cmd;
 
-        let open_res = self
-            .instance
-            .process_recover_table_command(&mut self.local, space, table_data, replay_batch_size)
-            .await;
+        // let open_res = self
+        //     .instance
+        //     .process_recover_table_command(&mut self.local, space, table_data,
+        // replay_batch_size)     .await;
+        let mut local = WorkerLocal {
+            data: self.local.data.clone(),
+            background_rx: self.local.background_rx.clone(),
+        };
+        let instance = self.instance.clone();
+
+        let task = async move {
+            instance
+                .process_recover_table_command(&mut local, space, table_data, replay_batch_size)
+                .await
+        };
+
+        let open_res = self.local.data.runtime.spawn(task).await.unwrap();
 
         if let Err(open_res) = tx.send(open_res) {
             error!(
