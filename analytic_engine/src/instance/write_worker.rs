@@ -824,6 +824,10 @@ impl WriteWorker {
             replay_batch_size,
         } = cmd;
 
+        info!(
+            "handle recover table in write worker, table:{}, id:{}, shard_id:{}",
+            table_data.name, table_data.id, table_data.shard_info.shard_id
+        );
         // let open_res = self
         //     .instance
         //     .process_recover_table_command(&mut self.local, space, table_data,

@@ -179,6 +179,11 @@ impl Instance {
         table_data: TableDataRef,
         replay_batch_size: usize,
     ) -> Result<Option<TableDataRef>> {
+        info!(
+            "handle recover table in bg worker, table:{}, id:{}, shard_id:{}",
+            table_data.name, table_data.id, table_data.shard_info.shard_id
+        );
+
         if let Some(exist_table_data) = space.find_table_by_id(table_data.id) {
             warn!("Open a opened table, table:{}", table_data.name);
             return Ok(Some(exist_table_data));
