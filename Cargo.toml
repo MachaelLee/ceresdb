@@ -58,6 +58,7 @@ arrow_ipc = { version = "32.0.0" }
 arrow_ext = { path = "components/arrow_ext" }
 analytic_engine = { path = "analytic_engine" }
 arena = { path = "components/arena" }
+async-stream = "0.3.4"
 async-trait = "0.1.53"
 base64 = "0.13"
 bytes = "1.1.0"
@@ -70,7 +71,6 @@ clap = "3.0"
 clru = "0.6.1"
 cluster = { path = "cluster" }
 criterion = "0.3"
-crossbeam = "0.7.1"
 common_types = { path = "common_types" }
 common_util = { path = "common_util" }
 datafusion = "18.0.0"
@@ -94,6 +94,7 @@ object_store = { path = "components/object_store" }
 parquet_ext = { path = "components/parquet_ext" }
 parquet = { version = "32.0.0" }
 paste = "1.0"
+pin-project-lite = "0.2.8"
 profile = { path = "components/profile" }
 prometheus = "0.12"
 prometheus-static-metric = "0.5"
@@ -103,7 +104,6 @@ rand = "0.7"
 remote_engine_client = { path = "remote_engine_client" }
 reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "json"] }
 router = { path = "router" }
-scheduled-thread-pool = "0.2.0"
 snafu = { version = "0.6.10", features = ["backtraces"] }
 serde = "1.0"
 serde_json = "1.0.60"

@@ -81,6 +81,7 @@ dependencies = [
  "arc-swap 1.5.1",
  "arena",
  "arrow 32.0.0",
+ "async-stream",
  "async-trait",
  "base64 0.13.0",
  "bytes 1.4.0",
@@ -98,6 +99,7 @@ dependencies = [
  "object_store 1.0.0",
  "parquet",
  "parquet_ext",
+ "pin-project-lite",
  "prometheus 0.12.0",
  "prost",
  "rand 0.7.3",
@@ -523,19 +525,20 @@ dependencies = [
 
 [[package]]
 name = "async-stream"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dad5c83079eae9969be7fadefe640a1c566901f05ff91ab221de4b6f68d9507e"
+checksum = "ad445822218ce64be7a341abfb0b1ea43b5c23aa83902542a4542e78309d8e5e"
 dependencies = [
  "async-stream-impl",
  "futures-core",
+ "pin-project-lite",
 ]
 
 [[package]]
 name = "async-stream-impl"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10f203db73a71dfa2fb6dd22763990fa26f3d2625a6da2da900d23b87d26be27"
+checksum = "e4655ae1a7b0cdf149156f780c5bf3f1352bc53cbd9e0a361a7ef7b22947e965"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1045,7 +1048,6 @@ dependencies = [
  "common_util",
  "log",
  "meta_client",
- "server",
  "snafu 0.6.10",
  "system_catalog",
  "table_engine",
@@ -2884,11 +2886,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "influxdb_line_protocol"
-version = "0.1.0"
-source = "git+https://github.com/jiacai2050/influxdb_line_protocol#14e00a3dbc99a5edff226b92e3496314b086acf4"
+name = "influxdb-line-protocol"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1192416847e724d001c1f410cf348f27978a50b30f3473afbf73062cada2697a"
 dependencies = [
  "bytes 1.4.0",
+ "log",
  "nom 7.1.1",
  "smallvec",
  "snafu 0.7.1",
@@ -2897,7 +2901,7 @@ dependencies = [
 [[package]]
 name = "influxql-logical-planner"
 version = "0.1.0"
-source = "git+https://github.com/Rachelint/influxql-logical-planner.git?rev=83d8854004e569b32ddbc66a31f74ea5dee99c7b#83d8854004e569b32ddbc66a31f74ea5dee99c7b"
+source = "git+https://github.com/Rachelint/influxql-logical-planner.git?rev=6057f72cd07336b9d641fcfcb98fb69b60fec1eb#6057f72cd07336b9d641fcfcb98fb69b60fec1eb"
 dependencies = [
  "arrow 32.0.0",
  "chrono",
@@ -3081,6 +3085,12 @@ checksum = "258451ab10b34f8af53416d1fdab72c22e805f0c92a1136d59470ec0b11138b2"
 dependencies = [
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "json_pretty"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c9fe3f290d2cb8660e3e051352ea55a404788d213a106a33ec8802447c4a762"
 
 [[package]]
 name = "lazy_static"
@@ -4222,6 +4232,7 @@ dependencies = [
  "parquet",
  "parquet-format",
  "thrift 0.13.0",
+ "tokio",
 ]
 
 [[package]]
@@ -5572,21 +5583,21 @@ dependencies = [
  "bytes 1.4.0",
  "catalog",
  "ceresdbproto",
+ "clru",
  "cluster",
  "common_types",
  "common_util",
- "crossbeam",
  "datafusion",
  "datafusion-expr",
  "df_operator",
  "futures 0.3.25",
  "http",
- "influxdb_line_protocol",
+ "influxdb-line-protocol",
  "interpreters",
+ "json_pretty",
  "lazy_static",
  "log",
  "logger",
- "lru",
  "meta_client",
  "opensrv-mysql",
  "paste 1.0.8",
@@ -5597,7 +5608,6 @@ dependencies = [
  "prost",
  "query_engine",
  "router",
- "scheduled-thread-pool",
  "serde",
  "serde_json",
  "snafu 0.6.10",

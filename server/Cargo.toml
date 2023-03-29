@@ -19,7 +19,6 @@ bytes = { workspace = true }
 catalog = { workspace = true }
 ceresdbproto = { workspace = true }
 cluster = { workspace = true }
-crossbeam = { workspace = true }
 common_types = { workspace = true }
 common_util = { workspace = true }
 datafusion = { workspace = true }
@@ -27,12 +26,12 @@ datafusion-expr = { workspace = true }
 df_operator = { workspace = true }
 futures = { workspace = true }
 http = "0.2"
-influxdb_line_protocol = { git = "https://github.com/jiacai2050/influxdb_line_protocol" }
+influxdb-line-protocol = "1.0"
 interpreters = { workspace = true }
 lazy_static = { workspace = true }
 log = { workspace = true }
 logger = { workspace = true }
-lru = { workspace = true }
+clru = { workspace = true }
 meta_client = { workspace = true }
 opensrv-mysql = "0.1.0"
 paste = { workspace = true }
@@ -43,7 +42,6 @@ prometheus-static-metric = { workspace = true }
 prost = { workspace = true }
 query_engine = { workspace = true }
 router = { workspace = true }
-scheduled-thread-pool = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 snafu = { workspace = true }
@@ -59,4 +57,5 @@ warp = "0.3"
 zstd = { workspace = true }
 
 [dev-dependencies]
+json_pretty = "0.1.2"
 sql = { workspace = true, features = ["test"] }

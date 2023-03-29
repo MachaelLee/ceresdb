@@ -16,8 +16,8 @@ use serde::{Deserialize, Serialize};
 use table_engine::ANALYTIC_ENGINE_TYPE;
 
 use crate::{
-    grpc::{forward, hotspot},
     http::DEFAULT_MAX_BODY_SIZE,
+    proxy::{forward, hotspot},
 };
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
