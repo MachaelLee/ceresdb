@@ -18,7 +18,7 @@ use common_util::{
     runtime::{JoinHandle, Runtime},
     time::InstantExt,
 };
-use futures::future;
+use futures::{future, TryFutureExt};
 use log::{error, info};
 use snafu::{Backtrace, ResultExt, Snafu};
 use table_engine::{
@@ -34,7 +34,9 @@ use crate::{
     instance::{
         engine,
         flush_compaction::{self, TableFlushOptions},
-        write, write_worker, InstanceRef,
+        write, write_worker,
+        write_worker::Command::Recover,
+        InstanceRef,
     },
     space::{SpaceId, SpaceRef},
     table::{data::TableDataRef, metrics::Metrics},
@@ -526,16 +528,42 @@ pub async fn process_command_in_write_worker<T, E: std::error::Error + Send + Sy
     table_data: &TableDataRef,
     rx: oneshot::Receiver<std::result::Result<T, E>>,
 ) -> Result<T> {
+    let mut recover = false;
+    let mut name = "unkonwn".to_string();
+    let mut id = 0;
+    if let Recover(req) = &cmd {
+        recover = true;
+        name = req.table_data.name.clone();
+        id = req.table_data.id.as_u64();
+        if recover {
+            info!("send recover command begin, table:{name}, id:{id}");
+        }
+    }
+
     send_command_to_write_worker(cmd, table_data).await;
+
+    if recover {
+        info!("send recover command finish, table:{name}, id:{id}");
+    }
 
     // Receive alter options result.
     match rx.await {
-        Ok(res) => res.box_err().context(Channel),
-        Err(_) => ReceiveFromWorker {
-            table: &table_data.name,
-            worker_id: table_data.write_handle.worker_id(),
+        Ok(res) => {
+            if recover {
+                info!("receive recover command success, table:{name}, id:{id}");
+            };
+            res.box_err().context(Channel)
         }
-        .fail(),
+        Err(_) => {
+            if recover {
+                info!("receive recover command fail, table:{name}, id:{id}");
+            };
+            ReceiveFromWorker {
+                table: &table_data.name,
+                worker_id: table_data.write_handle.worker_id(),
+            }
+            .fail()
+        }
     }
 }
 
