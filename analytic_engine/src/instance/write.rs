@@ -357,6 +357,7 @@ impl<'a> Writer<'a> {
         self.table_data.metrics.on_write_request_begin();
 
         self.validate_before_write(&request)?;
+        let num_rows = request.row_group.num_rows();
         let mut encode_ctx = EncodeContext::new(request.row_group);
 
         self.preprocess_write(&mut encode_ctx).await?;
@@ -372,6 +373,7 @@ impl<'a> Writer<'a> {
             index_in_writer,
             encoded_rows,
         } = encode_ctx;
+        let encoded_size = encoded_rows.len();
 
         let table_data = self.table_data.clone();
         let split_res = self.maybe_split_write_request(encoded_rows, &row_group);
@@ -380,6 +382,10 @@ impl<'a> Writer<'a> {
                 encoded_rows,
                 row_group,
             } => {
+                info!(
+                    "Integrate write table row group, row size:{}, encoded size:{}",
+                    num_rows, encoded_size
+                );
                 self.write_table_row_group(&table_data, row_group, index_in_writer, encoded_rows)
                     .await?;
             }
@@ -387,6 +393,7 @@ impl<'a> Writer<'a> {
                 encoded_batches,
                 row_group_batches,
             } => {
+                info!("Splitted write table row group, row size:{}, encoded size:{}, splitted into: {} parts", num_rows, encoded_size, row_group_batches.len());
                 for (encoded_rows, row_group) in encoded_batches.into_iter().zip(row_group_batches)
                 {
                     self.write_table_row_group(
