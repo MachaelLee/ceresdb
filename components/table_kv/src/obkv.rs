@@ -457,11 +457,14 @@ impl TableKv for ObkvImpl {
     ) -> Result<()> {
         debug!("obkv write batch begin, table:{table_name}");
 
-        let results = self
+        let execute_batch = self
             .client
-            .execute_batch(table_name, write_batch.batch_op)
+            .execute_batch(table_name, write_batch.batch_op);
+        
+        debug!("obkv write batch finish, table:{table_name},res_err:{}", execute_batch.is_err());
+        let results = execute_batch
             .context(WriteTable { table_name })?;
-        debug!("obkv write batch finish, table:{table_name}");
+       
 
         self.check_write_batch_op_results(table_name, &results, write_batch.op_num)?;
 
