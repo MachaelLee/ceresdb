@@ -392,9 +392,9 @@ impl Table for TableImpl {
     }
 
     async fn write(&self, request: WriteRequest) -> Result<usize> {
-        if self.should_queue_write_request(&request) {
-            return self.write_with_pending_queue(request).await;
-        }
+        // if self.should_queue_write_request(&request) {
+        //     return self.write_with_pending_queue(request).await;
+        // }
 
         let mut serial_exec = self.table_data.serial_exec.lock().await;
         let mut writer = Writer::new(
