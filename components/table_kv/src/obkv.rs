@@ -5,7 +5,7 @@
 use std::{collections::HashMap, error::Error as StdError, fmt};
 
 use common_util::define_result;
-use log::{error, info};
+use log::{debug, error, info};
 use obkv::{
     payloads::ObTableBatchOperation, Builder, ObTableClient, QueryResultSet, RunningMode, Table,
     TableOpResult, TableQuery, Value,
@@ -455,10 +455,13 @@ impl TableKv for ObkvImpl {
         table_name: &str,
         write_batch: ObkvWriteBatch,
     ) -> Result<()> {
+        debug!("obkv write batch begin, table:{table_name}");
+
         let results = self
             .client
             .execute_batch(table_name, write_batch.batch_op)
             .context(WriteTable { table_name })?;
+        debug!("obkv write batch finish, table:{table_name}");
 
         self.check_write_batch_op_results(table_name, &results, write_batch.op_num)?;
 
