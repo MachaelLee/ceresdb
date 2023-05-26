@@ -434,12 +434,14 @@ impl<'a> Writer<'a> {
         encoded_rows: Vec<ByteVec>,
     ) -> Result<()> {
         info!(
-            "write_table_row_group start, seq:{}",
+            "write_table_row_group start, table:{}, seq:{}",
+            table_data.name,
             table_data.last_sequence()
         );
         let sequence = self.write_to_wal(encoded_rows).await?;
         info!(
-            "write_table_row_group write wal finish, seq:{}",
+            "write_table_row_group write wal finish, table:{}, seq:{}",
+            table_data.name,
             table_data.last_sequence()
         );
 
@@ -456,7 +458,8 @@ impl<'a> Writer<'a> {
             })?;
 
         info!(
-            "write_table_row_group write memtable finish, seq:{}",
+            "write_table_row_group write memtable finish, table:{}, seq:{}",
+            table_data.name,
             table_data.last_sequence()
         );
 
