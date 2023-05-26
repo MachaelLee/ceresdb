@@ -383,8 +383,8 @@ impl<'a> Writer<'a> {
                 row_group,
             } => {
                 info!(
-                    "Integrate write table row group, row size:{}, encoded size:{}",
-                    num_rows, encoded_size
+                    "Integrate write table row group, row size:{}, encoded size:{}, table:{}",
+                    num_rows, encoded_size,self.table_data.name
                 );
                 self.write_table_row_group(&table_data, row_group, index_in_writer, encoded_rows)
                     .await?;
@@ -393,7 +393,7 @@ impl<'a> Writer<'a> {
                 encoded_batches,
                 row_group_batches,
             } => {
-                info!("Splitted write table row group, row size:{}, encoded size:{}, splitted into: {} parts", num_rows, encoded_size, row_group_batches.len());
+                info!("Splitted write table row group, row size:{}, encoded size:{}, table:{}, splitted into: {} parts", num_rows, encoded_size, self.table_data.name, row_group_batches.len());
                 for (encoded_rows, row_group) in encoded_batches.into_iter().zip(row_group_batches)
                 {
                     self.write_table_row_group(
