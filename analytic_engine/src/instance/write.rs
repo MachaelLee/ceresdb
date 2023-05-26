@@ -433,7 +433,16 @@ impl<'a> Writer<'a> {
         index_in_writer: IndexInWriterSchema,
         encoded_rows: Vec<ByteVec>,
     ) -> Result<()> {
+        info!(
+            "write_table_row_group start, seq:{}",
+            table_data.last_sequence()
+        );
         let sequence = self.write_to_wal(encoded_rows).await?;
+        info!(
+            "write_table_row_group write wal finish, seq:{}",
+            table_data.last_sequence()
+        );
+
         let memtable_writer = MemTableWriter::new(table_data.clone(), self.serial_exec);
 
         memtable_writer
@@ -445,6 +454,11 @@ impl<'a> Writer<'a> {
                 );
                 e
             })?;
+
+        info!(
+            "write_table_row_group write memtable finish, seq:{}",
+            table_data.last_sequence()
+        );
 
         // Failure of writing memtable may cause inconsecutive sequence.
         if table_data.last_sequence() + 1 != sequence {

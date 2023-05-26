@@ -272,7 +272,10 @@ impl TableImpl {
                     "The pending writes should contain at least the one just pushed."
                 );
                 let size = pending_writes.num_rows;
-                info!("Start merge writes request, size:{size}, table:{}", self.table_data.name);
+                info!(
+                    "Start merge writes request, size:{size}, table:{}",
+                    self.table_data.name
+                );
                 let merged_write_request =
                     merge_pending_write_requests(pending_writes.writes, pending_writes.num_rows);
                 info!(
