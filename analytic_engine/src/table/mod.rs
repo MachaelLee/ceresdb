@@ -13,7 +13,7 @@ use common_types::{
 use common_util::error::BoxError;
 use datafusion::{common::Column, logical_expr::Expr};
 use futures::TryStreamExt;
-use log::{error, warn};
+use log::{error, info, warn};
 use snafu::{ensure, OptionExt, ResultExt};
 use table_engine::{
     partition::PartitionInfo,
@@ -271,8 +271,13 @@ impl TableImpl {
                     !pending_writes.is_empty(),
                     "The pending writes should contain at least the one just pushed."
                 );
+                info!("Start merge writes request, table:{}", self.table_data.name);
                 let merged_write_request =
                     merge_pending_write_requests(pending_writes.writes, pending_writes.num_rows);
+                info!(
+                    "Finish merge writes request, table:{}",
+                    self.table_data.name
+                );
                 (merged_write_request, serial_exec, pending_writes.notifiers)
             }
             QueueResult::Waiter(rx) => {

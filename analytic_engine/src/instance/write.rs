@@ -384,7 +384,7 @@ impl<'a> Writer<'a> {
             } => {
                 info!(
                     "Integrate write table row group, row size:{}, encoded size:{}, table:{}",
-                    num_rows, encoded_size,self.table_data.name
+                    num_rows, encoded_size, self.table_data.name
                 );
                 self.write_table_row_group(&table_data, row_group, index_in_writer, encoded_rows)
                     .await?;
