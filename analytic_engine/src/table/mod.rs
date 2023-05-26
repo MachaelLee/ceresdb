@@ -338,7 +338,7 @@ impl TableImpl {
             Err(e) => {
                 let err_msg = format!("Failed to do merge write, err:{e}");
                 error!(
-                    "write_with_pending_queue failed, table:{}",
+                    "write_with_pending_queue failed, table:{}, err_msg:{err_msg}",
                     self.table_data.name
                 );
                 for notifier in notifiers {
