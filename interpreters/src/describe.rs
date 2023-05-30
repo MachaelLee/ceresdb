@@ -1,6 +1,6 @@
 // Copyright 2022-2023 CeresDB Project Authors. Licensed under Apache-2.0.
 
-use std::{convert::TryInto, sync::Arc};
+use std::sync::Arc;
 
 use arrow::{
     array::{BooleanArray, StringArray},

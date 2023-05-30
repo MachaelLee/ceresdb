@@ -473,7 +473,6 @@ mod tests {
     };
     use common_types::{
         column_schema,
-        record_batch::RecordBatch,
         schema::{self, TIMESTAMP_COLUMN},
     };
     use prom_remote_api::types::Label;
@@ -574,7 +573,7 @@ mod tests {
         )
         .unwrap();
 
-        vec![RecordBatch::try_from(batch).unwrap()]
+        vec![batch.try_into().unwrap()]
     }
 
     #[test]
