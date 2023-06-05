@@ -36,6 +36,7 @@ use self::client::{Client, ClientReadRecordBatchStream};
 
 pub mod error {
     use common_util::{define_result, error::GenericError};
+    use router::endpoint::Endpoint;
     use snafu::{Backtrace, Snafu};
     use table_engine::remote::model::TableIdentifier;
 
@@ -75,12 +76,10 @@ pub mod error {
         },
 
         #[snafu(display(
-            "Failed to query from table in server, table_idents:{:?}, code:{}, msg:{}",
-            table_idents,
-            code,
-            msg
+            "Failed to query from table in server:{server:?}, table_idents:{table_idents:?}, code:{code}, msg:{msg}",
         ))]
         Server {
+            server:Endpoint,
             table_idents: Vec<TableIdentifier>,
             code: u32,
             msg: String,

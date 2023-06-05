@@ -23,7 +23,7 @@ use common_types::{
 use common_util::{error::BoxError, runtime::Runtime};
 use futures::{Stream, StreamExt};
 use log::info;
-use router::RouterRef;
+use router::{RouterRef, endpoint::Endpoint};
 use snafu::{ensure, OptionExt, ResultExt};
 use table_engine::{
     remote::model::{
@@ -97,7 +97,7 @@ impl Client {
         // evict cache entry.
         let response = response.into_inner();
         let remote_read_record_batch_stream =
-            ClientReadRecordBatchStream::new(table_ident, response, projected_schema);
+            ClientReadRecordBatchStream::new(route_context.endpoint.clone(),table_ident, response, projected_schema);
 
         Ok(remote_read_record_batch_stream)
     }
@@ -127,6 +127,7 @@ impl Client {
             let response = response.into_inner();
             if let Some(header) = &response.header && !status_code::is_ok(header.code) {
                 Server {
+                    server: route_context.endpoint,
                     table_idents: vec![table_ident.clone()],
                     code: header.code,
                     msg: header.error.clone(),
@@ -164,7 +165,8 @@ impl Client {
         // Merge according to endpoint.
         let mut remote_writes = Vec::with_capacity(write_batch_contexts_by_endpoint.len());
         let mut written_tables = Vec::with_capacity(write_batch_contexts_by_endpoint.len());
-        for (_, context) in write_batch_contexts_by_endpoint {
+        let mut endpoints = Vec::with_capacity(write_batch_contexts_by_endpoint.len());
+        for (endpoint, context) in write_batch_contexts_by_endpoint {
             // Write to remote.
             let WriteBatchContext {
                 table_idents,
@@ -192,10 +194,11 @@ impl Client {
 
             remote_writes.push(handle);
             written_tables.push(table_idents);
+            endpoints.push(endpoint);
         }
 
         let mut results = Vec::with_capacity(remote_writes.len());
-        for (table_idents, remote_write) in written_tables.into_iter().zip(remote_writes) {
+        for ((table_idents, remote_write), endpoint) in written_tables.into_iter().zip(remote_writes).zip(endpoints) {
             let batch_result = remote_write.await;
             // If it's runtime error, don't evict entires from route cache.
             let batch_result = match batch_result.box_err() {
@@ -214,6 +217,7 @@ impl Client {
                 let response = response.into_inner();
                 if let Some(header) = &response.header && !status_code::is_ok(header.code) {
                     Server {
+                        server: endpoint,
                         table_idents: table_idents.clone(),
                         code: header.code,
                         msg: header.error.clone(),
@@ -262,6 +266,7 @@ impl Client {
             let response = response.into_inner();
             if let Some(header) = &response.header && !status_code::is_ok(header.code) {
                     Server {
+                        server: route_context.endpoint.clone(),
                         table_idents: vec![table_ident.clone()],
                         code: header.code,
                         msg: header.error.clone(),
@@ -274,6 +279,7 @@ impl Client {
         match result {
             Ok(response) => {
                 let table_info = response.table_info.context(Server {
+                    server:route_context.endpoint.clone(),
                     table_idents: vec![table_ident.clone()],
                     code: status_code::StatusCode::Internal.as_u32(),
                     msg: "Table info is empty",
@@ -294,6 +300,7 @@ impl Client {
                             msg: "Failed to covert table schema",
                         })?
                         .with_context(|| Server {
+                            server: route_context.endpoint.clone(),
                             table_idents: vec![table_ident],
                             code: status_code::StatusCode::Internal.as_u32(),
                             msg: "Table schema is empty",
@@ -330,6 +337,7 @@ impl Client {
 }
 
 pub struct ClientReadRecordBatchStream {
+    pub server: Endpoint,
     pub table_ident: TableIdentifier,
     pub response_stream: Streaming<remote_engine::ReadResponse>,
     pub projected_schema: ProjectedSchema,
@@ -338,12 +346,14 @@ pub struct ClientReadRecordBatchStream {
 
 impl ClientReadRecordBatchStream {
     pub fn new(
+        server: Endpoint,
         table_ident: TableIdentifier,
         response_stream: Streaming<remote_engine::ReadResponse>,
         projected_schema: ProjectedSchema,
     ) -> Self {
         let projected_record_schema = projected_schema.to_record_schema();
         Self {
+            server,
             table_ident,
             response_stream,
             projected_schema,
@@ -356,12 +366,14 @@ impl Stream for ClientReadRecordBatchStream {
     type Item = Result<RecordBatch>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let server =  self.server.clone();
         let this = self.get_mut();
         match this.response_stream.poll_next_unpin(cx) {
             Poll::Ready(Some(Ok(response))) => {
                 // Check header.
                 if let Some(header) = response.header && !status_code::is_ok(header.code) {
                     return Poll::Ready(Some(Server {
+                        server,
                         table_idents: vec![this.table_ident.clone()],
                         code: header.code,
                         msg: header.error,
