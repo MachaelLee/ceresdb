@@ -80,7 +80,7 @@ impl<T> PartitionedMutex<T> {
     }
 
     pub fn lock<K: Eq + Hash>(&self, key: &K) -> MutexGuard<'_, T> {
-        let mutex = self.get_partition(key);
+        let mutex: &Mutex<T> = self.get_partition(key);
 
         mutex.lock().unwrap()
     }
