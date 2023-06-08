@@ -5,7 +5,7 @@
 //! 2. Builtin Partition to reduce lock contention
 
 use std::{
-    collections::hash_map::RandomState,
+    collections::{hash_map::RandomState, HashMap},
     fmt::{self, Display},
     num::NonZeroUsize,
     ops::Range,
@@ -18,7 +18,10 @@ use clru::{CLruCache, CLruCacheConfig, WeightScale};
 use common_util::partitioned_lock::PartitionedMutex;
 use futures::stream::BoxStream;
 use snafu::{OptionExt, Snafu};
-use tokio::io::AsyncWrite;
+use tokio::{
+    io::AsyncWrite,
+    sync::{Mutex, MutexGuard},
+};
 use upstream::{path::Path, GetResult, ListResult, MultipartId, ObjectMeta, ObjectStore, Result};
 
 use crate::ObjectStoreRef;
@@ -112,24 +115,57 @@ pub struct MemCacheStore {
     cache: MemCacheRef,
     underlying_store: ObjectStoreRef,
     readonly_cache: bool,
+    cache_key_mutex: CacheKeyMutexRef,
+}
+
+type CacheKeyMutexRef = Arc<CacheKeyMutex>;
+
+pub struct CacheKeyMutex {
+    cache_keys: Arc<Mutex<HashMap<String, Arc<Mutex<String>>>>>,
+}
+
+impl Default for CacheKeyMutex {
+    fn default() -> Self {
+        Self {
+            cache_keys: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
+
+impl CacheKeyMutex {
+    async fn lock(&self, cache_key: &str) -> Arc<Mutex<String>> {
+        let mut keys_lock = self.cache_keys.lock().await;
+        if !keys_lock.contains_key(cache_key) {
+            keys_lock.insert(
+                cache_key.to_string(),
+                Arc::new(Mutex::new(cache_key.to_string())),
+            );
+        }
+        keys_lock.get(cache_key).unwrap().clone()
+    }
 }
 
 impl MemCacheStore {
     /// Create a default [`MemCacheStore`].
     pub fn new(cache: MemCacheRef, underlying_store: ObjectStoreRef) -> Self {
+        let cache_key_mutex = CacheKeyMutex::default();
         Self {
             cache,
             underlying_store,
             readonly_cache: false,
+            cache_key_mutex: Arc::new(cache_key_mutex),
         }
     }
 
     /// Create a [`MemCacheStore`] with a readonly cache.
     pub fn new_with_readonly_cache(cache: MemCacheRef, underlying_store: ObjectStoreRef) -> Self {
+        let cache_key_mutex = CacheKeyMutex::default();
+
         Self {
             cache,
             underlying_store,
             readonly_cache: true,
+            cache_key_mutex: Arc::new(cache_key_mutex),
         }
     }
 
@@ -141,6 +177,12 @@ impl MemCacheStore {
         // TODO(chenxiang): What if there are some overlapping range in cache?
         // A request with range [5, 10) can also use [0, 20) cache
         let cache_key = Self::cache_key(location, &range);
+        if let Some(bytes) = self.cache.get(&cache_key) {
+            return Ok(bytes);
+        }
+
+        let lock = self.cache_key_mutex.lock(&cache_key).await;
+        let _lock: MutexGuard<String> = lock.lock().await;
         if let Some(bytes) = self.cache.get(&cache_key) {
             return Ok(bytes);
         }
