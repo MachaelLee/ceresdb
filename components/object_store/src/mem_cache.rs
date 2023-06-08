@@ -177,14 +177,18 @@ impl MemCacheStore {
     async fn get_range_with_rw_cache(&self, location: &Path, range: Range<usize>) -> Result<Bytes> {
         // TODO(chenxiang): What if there are some overlapping range in cache?
         // A request with range [5, 10) can also use [0, 20) cache
+        let size: usize = range.end - range.start;
         let cache_key = Self::cache_key(location, &range);
         if let Some(bytes) = self.cache.get(&cache_key) {
+            info!(
+                "get_range_with_rw_cache from cache data cache key:{cache_key}, size:{size}, len:{}",
+                 bytes.len()
+            );
             return Ok(bytes);
         }
 
         let lock = self.cache_key_mutex.lock(&cache_key).await;
         let _lock: MutexGuard<String> = lock.lock().await;
-        let size = range.end - range.start;
         info!("get_range_with_rw_cache cache key:{cache_key}, size:{size}",);
         if let Some(bytes) = self.cache.get(&cache_key) {
             info!(
