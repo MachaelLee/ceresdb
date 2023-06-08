@@ -7,7 +7,7 @@ use bytes::Bytes;
 use common_util::runtime::Runtime;
 use futures::stream::BoxStream;
 use lazy_static::lazy_static;
-use log::{trace, info};
+use log::{info, trace};
 use prometheus::{exponential_buckets, register_histogram_vec, HistogramVec};
 use prometheus_static_metric::make_static_metric;
 use tokio::io::AsyncWrite;
@@ -159,6 +159,7 @@ impl ObjectStore for StoreWithMetrics {
         let instant = Instant::now();
         let store = self.store.clone();
         let loc = location.clone();
+        let range_fmt = format!("{range:?}");
         let result = self
             .runtime
             .spawn(async move { store.get_range(&loc, range.clone()).await })
@@ -168,9 +169,8 @@ impl ObjectStore for StoreWithMetrics {
                 source: Box::new(source),
             })??;
         info!(
-            "Object store with metrics get_range cost:{}ms, location:{}, thread:{}-{:?}",
+            "Object store with metrics get_range cost:{}ms, location:{location}, range:{range_fmt}, thread:{}-{:?}",
             instant.elapsed().as_millis(),
-            location,
             thread::current().name().unwrap_or("noname").to_string(),
             thread::current().id()
         );

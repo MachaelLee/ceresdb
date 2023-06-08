@@ -17,6 +17,7 @@ use bytes::Bytes;
 use clru::{CLruCache, CLruCacheConfig, WeightScale};
 use common_util::partitioned_lock::PartitionedMutex;
 use futures::stream::BoxStream;
+use log::info;
 use snafu::{OptionExt, Snafu};
 use tokio::{
     io::AsyncWrite,
@@ -186,6 +187,8 @@ impl MemCacheStore {
         if let Some(bytes) = self.cache.get(&cache_key) {
             return Ok(bytes);
         }
+
+        info!("get_range_with_rw_cache cache key:{cache_key}");
 
         // TODO(chenxiang): What if two threads reach here? It's better to
         // pend one thread, and only let one to fetch data from underlying store.
