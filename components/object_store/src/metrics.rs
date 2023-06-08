@@ -169,8 +169,9 @@ impl ObjectStore for StoreWithMetrics {
                 source: Box::new(source),
             })??;
         info!(
-            "Object store with metrics get_range cost:{}ms, location:{location}, range:{range_fmt}, thread:{}-{:?}",
+            "Object store with metrics get_range cost:{}ms, location:{location}, range:{range_fmt}, size:{},thread:{}-{:?}",
             instant.elapsed().as_millis(),
+            result.len(),
             thread::current().name().unwrap_or("noname").to_string(),
             thread::current().id()
         );

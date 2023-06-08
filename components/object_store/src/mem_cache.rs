@@ -184,19 +184,24 @@ impl MemCacheStore {
 
         let lock = self.cache_key_mutex.lock(&cache_key).await;
         let _lock: MutexGuard<String> = lock.lock().await;
-        info!(
-            "get_range_with_rw_cache cache key:{cache_key}, size:{}",
-            range.end - range.start
-        );
+        let size = range.end - range.start;
+        info!("get_range_with_rw_cache cache key:{cache_key}, size:{size}",);
         if let Some(bytes) = self.cache.get(&cache_key) {
+            info!(
+                "get_range_with_rw_cache from cache data cache key:{cache_key}, size:{size}, len:{}",
+                 bytes.len()
+            );
             return Ok(bytes);
         }
 
         // TODO(chenxiang): What if two threads reach here? It's better to
         // pend one thread, and only let one to fetch data from underlying store.
         let bytes = self.underlying_store.get_range(location, range).await?;
-        self.cache.insert(cache_key, bytes.clone());
-
+        self.cache.insert(cache_key.clone(), bytes.clone());
+        info!(
+            "get_range_with_rw_cache from objectstore data cache key:{cache_key}, size:{size}, len:{}",
+             bytes.len()
+        );
         Ok(bytes)
     }
 
