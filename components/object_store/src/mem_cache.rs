@@ -7,7 +7,6 @@
 use std::{
     collections::{hash_map::RandomState, HashMap},
     fmt::{self, Display},
-    mem,
     num::NonZeroUsize,
     ops::Range,
     sync::Arc,
@@ -202,10 +201,7 @@ impl MemCacheStore {
         // TODO(chenxiang): What if two threads reach here? It's better to
         // pend one thread, and only let one to fetch data from underlying store.
         let bytes = self.underlying_store.get_range(location, range).await?;
-        self.cache.insert(
-            cache_key.clone(),
-            Bytes::from_static(unsafe { mem::transmute(bytes.as_ref()) }),
-        );
+        self.cache.insert(cache_key.clone(), bytes.clone());
         info!(
             "get_range_with_rw_cache from objectstore data cache key:{cache_key}, size:{size}, len:{}",
              bytes.len()
@@ -416,5 +412,13 @@ mod test {
                 .collect::<Vec<_>>()
                 .join(",")
         );
+        let bytes = Bytes::from(vec![1, 2, 3]);
+
+    // 复制 `bytes`，增加引用计数.
+    let cloned_bytes = bytes.clone();
+
+    // `bytes` 和 `cloned_bytes` 共享同一块内存.
+    println!("bytes: {:?}", bytes);
+    println!("cloned_bytes: {:?}", cloned_bytes);
     }
 }
