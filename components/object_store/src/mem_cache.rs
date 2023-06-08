@@ -7,6 +7,7 @@
 use std::{
     collections::{hash_map::RandomState, HashMap},
     fmt::{self, Display},
+    mem,
     num::NonZeroUsize,
     ops::Range,
     sync::Arc,
@@ -201,7 +202,10 @@ impl MemCacheStore {
         // TODO(chenxiang): What if two threads reach here? It's better to
         // pend one thread, and only let one to fetch data from underlying store.
         let bytes = self.underlying_store.get_range(location, range).await?;
-        self.cache.insert(cache_key.clone(), bytes.clone());
+        self.cache.insert(
+            cache_key.clone(),
+            Bytes::from_static(unsafe { mem::transmute(bytes.as_ref()) }),
+        );
         info!(
             "get_range_with_rw_cache from objectstore data cache key:{cache_key}, size:{size}, len:{}",
              bytes.len()
