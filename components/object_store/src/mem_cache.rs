@@ -181,8 +181,8 @@ impl MemCacheStore {
         let cache_key = Self::cache_key(location, &range);
         if let Some(bytes) = self.cache.get(&cache_key) {
             info!(
-                "get_range_with_rw_cache from cache data cache key:{cache_key}, size:{size}, len:{}",
-                 bytes.len()
+                "get_range_with_rw_cache from cache data cache key:{cache_key}, size:{size}, len:{}, ptr:{:?}",
+                 bytes.len(),bytes.as_ref().as_ptr()
             );
             return Ok(bytes);
         }
@@ -192,8 +192,8 @@ impl MemCacheStore {
         info!("get_range_with_rw_cache cache key:{cache_key}, size:{size}",);
         if let Some(bytes) = self.cache.get(&cache_key) {
             info!(
-                "get_range_with_rw_cache from cache data cache key:{cache_key}, size:{size}, len:{}",
-                 bytes.len()
+                "get_range_with_rw_cache from cache data cache key:{cache_key}, size:{size}, len:{}, ptr:{:?}",
+                 bytes.len(),bytes.as_ref().as_ptr()
             );
             return Ok(bytes);
         }
@@ -203,8 +203,8 @@ impl MemCacheStore {
         let bytes = self.underlying_store.get_range(location, range).await?;
         self.cache.insert(cache_key.clone(), bytes.clone());
         info!(
-            "get_range_with_rw_cache from objectstore data cache key:{cache_key}, size:{size}, len:{}",
-             bytes.len()
+            "get_range_with_rw_cache from objectstore data cache key:{cache_key}, size:{size}, len:{}, ptr:{:?}",
+             bytes.len(), bytes.as_ref().as_ptr()
         );
         Ok(bytes)
     }
@@ -414,11 +414,11 @@ mod test {
         );
         let bytes = Bytes::from(vec![1, 2, 3]);
 
-    // 复制 `bytes`，增加引用计数.
-    let cloned_bytes = bytes.clone();
+        // 复制 `bytes`，增加引用计数.
+        let cloned_bytes = bytes.clone();
 
-    // `bytes` 和 `cloned_bytes` 共享同一块内存.
-    println!("bytes: {:?}", bytes);
-    println!("cloned_bytes: {:?}", cloned_bytes);
+        // `bytes` 和 `cloned_bytes` 共享同一块内存.
+        println!("bytes: {:?}", bytes);
+        println!("cloned_bytes: {:?}", cloned_bytes);
     }
 }
