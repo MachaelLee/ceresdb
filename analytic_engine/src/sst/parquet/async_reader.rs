@@ -361,23 +361,22 @@ impl<'a> Reader<'a> {
         
 
         let meta_data = MetaData::try_new(&parquet_meta_data, ignore_sst_filter).box_err().context(DecodeSstMeta)?;
-        Ok(meta_data)
-        // let custom = meta_data.custom().clone();
+        let custom = meta_data.custom().clone();
 
-        // let object_store_reader =
-        // ObjectStoreReader::new(self.store.clone(), self.path.clone(), meta_data);
-        // let  read_options = ArrowReaderOptions::new().with_page_index(true);
-        // let  builder = ParquetRecordBatchStreamBuilder::new_with_options(
-        //         object_store_reader,
-        //         read_options,
-        //     )
-        //     .await
-        //     .with_context(|| ParquetError)?;
+        let object_store_reader =
+        ObjectStoreReader::new(self.store.clone(), self.path.clone(), meta_data);
+        let  read_options = ArrowReaderOptions::new().with_page_index(true);
+        let  builder = ParquetRecordBatchStreamBuilder::new_with_options(
+                object_store_reader,
+                read_options,
+            )
+            .await
+            .with_context(|| ParquetError)?;
        
-        // Ok( MetaData{
-        //     parquet:builder.metadata().clone(),
-        //     custom,
-        // })
+        Ok( MetaData{
+            parquet:builder.metadata().clone(),
+            custom,
+        })
     }
 
     fn need_update_cache(&self) -> bool {
